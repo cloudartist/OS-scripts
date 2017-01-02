@@ -22,26 +22,26 @@ def get_ec2_instances():
 
 def get_rds_instances():
     instances    = []
-    reservations = rds.get_all_dbinstances()
-
-    for reservation in reservations:
-        for instance in reservation.instance_id:
-                instances.append(instance)
+    instances = rds.get_all_dbinstances()
     return instances
 
 def get_EIPs():
 	EIPs  = []
 	addrs = ec2.get_all_addresses()
 	for ip in addrs:
-		EIPs.append(ip.public_ip)
+		EIPs.append(str(ip.public_ip))
 	return EIPs
-
-
 
 def main():
     ec2_instances = get_ec2_instances()
     rds_instances = get_rds_instances()
     EIPs = get_EIPs()
+
+    if ((len(rds_instances) >= 1)  or  (len(EIPs) >= 1) or (len(ec2_instances) >= 2)):
+    	print "Send warning e-mail"
+    else:
+    	print "There are no unnecessary RES"
+
     print ("List of EC2 instances: %s" % ec2_instances)
     print ("List of RDS instances: %s" % rds_instances)
     print ("List of allocated EIPs: %s" % EIPs)
