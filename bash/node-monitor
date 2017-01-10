@@ -1,0 +1,181 @@
+#!/bin/bash
+#
+# node-monitor    Author: Marcin Taracha
+#
+# chkconfig: 345 95 15
+# description: node-monitor service is responsible for node to monitoring server assignment and dissociation at instance termination
+# processname: node-monitor
+#
+# Setup steps
+# Put the following commands in AWS user-data 
+# $ cp /path/to/node-monitor /etc/init.d/node-monitor
+# $ chmod +x /etc/init.d/node-monitor
+# $ chkconfig --add /etc/init.d/node-monitor
+# $ service node-monitor start
+
+# Source function library.
+. /etc/init.d/functions
+
+RETVAL=0
+prog="node-monitor"
+LOCKFILE=/var/lock/subsys/$prog
+
+# Declare variables for Node Monitor service
+NODE_MONITOR_DIR=/etc/node-monitor/
+NODE_MONITOR_USER=opsview-monitor
+USERNAME="awsuser"
+PASSWORD="password" # bake password in AMI or use Vault
+REGION="eu-west-1"
+OPSVIEW_URL="http://opsview-server.domain.name:3000"
+INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+HOST_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+HOSTNAME=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=Name" --region=$REGION --output=text | cut -f5)
+mkdir -p $NODE_MONITOR_DIR
+
+# Get security credentials token in order to make API calls
+OPSVIEW_TOKEN=$(curl -s -k -X POST  -H 'Content-Type: application/json' $OPSVIEW_URL/rest/login -d '{"username":"'$USERNAME'","password":"'$PASSWORD'"}' | jq -r '.token')
+
+
+assign_host_to_opsview()
+{
+#Add host to opsview monitoring
+curl -s -k -X POST  -H 'Content-Type: application/json' -H "X-Opsview-Username: $USERNAME" -H "X-Opsview-Token: $OPSVIEW_TOKEN"  $OPSVIEW_URL/rest/config/host -d '
+{
+    "hostgroup": {
+        "name": "aws - ${environment}"
+    },
+    "hosttemplates": [
+        {
+            "name": "OS - AWS Instance Base"
+        }
+    ],
+    "hostattributes": [
+      {
+        "arg2": "'"$INSTANCE_ID"'",
+        "arg1": null,
+        "arg4": null,
+        "value": "aws_test",
+        "arg3": "/usr/local/nagios/etc/aws_${environment}_credentials.cfg",
+        "name": "AWS_CLOUDWATCH_CREDENTIALS",
+        "id": "14"
+      }
+    ],
+    "icon": {
+        "name": "LOGO - Opsview",
+        "path": "/images/logos/opsview_small.png"
+    },
+    "ip": "'"$HOST_IP"'",
+    "monitored_by": {
+        "name": "Opsview Master Server",
+        "ref": "/rest/config/monitoringserver/1"
+    },
+    "name": "'"$HOSTNAME"'-'"$HOST_IP"'",
+    "other_addresses": "'"$HOST_IP"'.'"$REGION"'"
+}' | jq '.' > $NODE_MONITOR_DIR/opsview_host.json
+}
+
+reload_opsview_config()
+{
+# Reload opsview dashboards
+curl -s -k -X POST  -H 'Content-Type: application/json' -H "X-Opsview-Username: $USERNAME" -H "X-Opsview-Token: $OPSVIEW_TOKEN"  $OPSVIEW_URL/rest/reload | jq '.'
+case "$?" in
+'0' ) echo "Server running, with no warnings" ;;
+'1' ) echo "Server reloading" ;;
+'2' ) echo "Server not running" ;;
+'3' ) echo "Configuration error or critical error" ;;
+'4' ) echo "Warnings exist" ;;
+* ) echo "Unknown error. Exiting..."; exit 1 ;;
+esac
+}
+
+dissociate_host_from_opsview()
+{
+local OPSVIEW_HOST_ID=$(cat $NODE_MONITOR_DIR/opsview_host.json | jq -r '.object.id')
+curl -s -X DELETE -H 'Content-Type: application/json' -H "X-Opsview-Username: $USERNAME" -H "X-Opsview-Token: $OPSVIEW_TOKEN" "$OPSVIEW_URL/rest/config/host/$OPSVIEW_HOST_ID" | jq '.'
+
+echo '
+{
+  "Run 'service node-monitor start' in order to assign node to opsview"
+}
+' > $NODE_MONITOR_DIR/opsview_host.json
+
+}
+
+host_config_summary()
+{
+local OPSVIEW_HOST_ID=$(cat $NODE_MONITOR_DIR/opsview_host.json | jq -r '.object.id')
+
+if [ -z "$OPSVIEW_HOST_ID" ]; then
+    echo "You need to start node-monitor service in order to assign node"
+else
+    curl -s -H 'Content-Type: application/json' -H "X-Opsview-Username: $USERNAME" -H "X-Opsview-Token: $OPSVIEW_TOKEN" "$OPSVIEW_URL/rest/config/host/$OPSVIEW_HOST_ID" | jq '.'
+fi
+
+}
+
+wait_for_opsview_ready_status() {
+    # Check if opsview is reloading
+    while [ $(curl -s -k -X GET  -H 'Content-Type: application/json' -H "X-Opsview-Username: $USERNAME" -H "X-Opsview-Token: $OPSVIEW_TOKEN"  $OPSVIEW_URL/rest/reload | jq -r '.server_status') != '0' ]
+    do
+        echo "Waiting for opsview server to be in running state..."
+        sleep 3
+    done
+    echo "Opsview server running state - OK"
+}
+
+start() {
+        echo -e "Assigning node to opsview..."
+        wait_for_opsview_ready_status
+        assign_host_to_opsview
+        RETVAL=$?
+        [ $RETVAL -eq 0 ] && touch $LOCKFILE
+        echo
+        return $RETVAL
+}
+
+stop() {
+        echo -e "Dissociating node from opsview... \n"
+        wait_for_opsview_ready_status
+        dissociate_host_from_opsview
+        RETVAL=$?
+        [ $RETVAL -eq 0 ] && rm -f $LOCKFILE
+        echo
+        return $RETVAL
+}
+
+reload() {
+        echo -e "Reloading opsview configuration... \nPlease wait... "
+        reload_opsview_config
+        RETVAL=$?
+        return $RETVAL
+}
+
+status() {
+        echo -e "Node status:"
+        host_config_summary
+        RETVAL=$?
+        return $RETVAL
+}
+
+
+case "$1" in
+    start)
+        start
+        reload
+        ;;
+    stop)
+        stop
+        reload
+        ;;
+    status)
+        status
+        ;;
+    reload)
+        reload
+        ;;
+    *)
+        echo "Usage: $prog {start|stop|status|reload}"
+        exit 1
+        ;;
+esac
+exit $RETVAL
