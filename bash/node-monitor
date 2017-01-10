@@ -21,8 +21,8 @@ prog="node-monitor"
 LOCKFILE=/var/lock/subsys/$prog
 
 # Declare variables for Node Monitor service
-NODE_MONITOR_DIR=/home/jobsite/node-monitor
-NODE_MONITOR_USER=jobsite
+NODE_MONITOR_DIR=/etc/node-monitor/
+NODE_MONITOR_USER=opsview-monitor
 USERNAME="awsuser"
 PASSWORD="password" # bake password in AMI or use Vault
 REGION="eu-west-1"
