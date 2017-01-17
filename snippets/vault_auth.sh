@@ -4,7 +4,11 @@
 # https://www.vaultproject.io/intro/getting-started/apis.html
 # Requirements: 
 # - packages: jq
-# - AppRole authentication enabled (role-id  & secret-id)
+# - Vault AppRole authentication enabled (role-id  & secret-id)
+#
+# Comments
+# - make sure that you have secure your vault server to access only from certain IPs
+
 
 vault_server_endpoint="7.7.7.73:8200"
 role_id="7f538aca-bcdc-f6e1-fec8-2b6d8689a480"
