@@ -22,7 +22,7 @@ __file="${__dir}/$(basename "${BASH_SOURCE[0]}")"
 __base="$(basename ${__file} .sh)"
 __root="$(cd "$(dirname "${__dir}")" && pwd)"
 
-usage() { echo "Usage: $0 [-s <vault_ip>:<port>] [-p <path/to/secret>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-s <vault_ip>:<port>] [-p <path/to/secret>] [-r <role_id>] [-S <secret_id>]" 1>&2; exit 1; }
 
 while getopts ":s:p::r::S:" o; do
   case ${o} in
@@ -48,11 +48,11 @@ shift $((OPTIND-1)) # shift $((OPTIND-1)) removes all the options that have been
 if [[ -z "${s}" ]] || [[ -z "${p}" ]]; then
     usage
 fi
-
+# need to add option to read secret and role id from env vars
 if [[ -z "${r}" ]] || [[ -z "${S}" ]]; then
     echo "You need to provide role_id & secret_id as arugments or environment variables"
+    exit 1
 fi
-
 
 vault_server_endpoint=${s}
 secret_path=${p}
