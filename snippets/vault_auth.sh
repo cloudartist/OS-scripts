@@ -14,7 +14,7 @@
 set -o errexit # script exit when a command fails
 set -o pipefail # exit status of the last command that threw a non-zero exit code is returned
 #set -o nounset # exit when your script tries to use undeclared variables
-set -o xtrace # trace what gets executed
+#set -o xtrace # trace what gets executed
 
 # Set magic variables for current file & dir
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,13 +24,19 @@ __root="$(cd "$(dirname "${__dir}")" && pwd)"
 
 usage() { echo "Usage: $0 [-s <vault_ip>:<port>] [-p <path/to/secret>]" 1>&2; exit 1; }
 
-while getopts ":s:p:" o; do
+while getopts ":s:p::r::S:" o; do
   case ${o} in
     s) 
 		s=${OPTARG}
 		;;
     p) 
 		p=${OPTARG}
+		;;
+    r) 
+		r=${OPTARG}
+		;;
+    S) 
+		S=${OPTARG}
 		;;
     *) 
 		usage
@@ -43,12 +49,19 @@ if [[ -z "${s}" ]] || [[ -z "${p}" ]]; then
     usage
 fi
 
-#vault_server_endpoint="7.7.7.73:8200"
-#secret_path="secret/github/access_token"
+if [[ -z "${r}" ]] || [[ -z "${S}" ]]; then
+    echo "You need to provide role_id & secret_id as arugments or environment variables"
+fi
+
+
 vault_server_endpoint=${s}
 secret_path=${p}
-role_id="7f538aca-bcdc-f6e1-fec8-2b6d8689a480"
-secret_id="d3d156fc-2a0e-07dd-0aea-3e5b20705abd"
+role_id=${r}
+secret_id=${S}
+#vault_server_endpoint="7.7.7.73:8200"
+#secret_path="secret/github/access_token"
+#role_id=${r}="7f538aca-bcdc-f6e1-fec8-2b6d8689a480"
+#secret_id="d3d156fc-2a0e-07dd-0aea-3e5b20705abd"
 
 
 vault_token=$(curl -s -X POST \
