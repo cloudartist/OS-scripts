@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Author: Marcin Taracha
+# Version: 0.1
 #
 # Based on
 # https://www.vaultproject.io/intro/getting-started/apis.html
