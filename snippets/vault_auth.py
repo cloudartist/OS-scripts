@@ -27,14 +27,16 @@ class Vault(object):
 		#print(r.status_code, r.reason)
 		#return r
 		#return vault_token.text
-
+		data = ('{"role_id": "%s" ,"secret_id":"%s"}' % (self.role_id, self.secret_id))
 		try:
-			vault_token = requests.post('http://' + self.vault_server_endpoint + '/v1/auth/approle/login', data = '{"role_id":"7f538aca-bcdc-f6e1-fec8-2b6d8689a480","secret_id":"d3d156fc-2a0e-07dd-0aea-3e5b20705abd"}')
+			vault_token = requests.post('http://' + self.vault_server_endpoint + '/v1/auth/approle/login', data = data)
 
 			if not vault_token.status_code // 100 == 2:
 				return "Error: Unexpected response {}".format(vault_token.status_code)
 
+			#print self.role_id
 			return vault_token.text
+
 
 		except requests.exceptions.RequestException as e:
 			return "Error: {}".format(e)        
@@ -54,3 +56,4 @@ if __name__ == '__main__':
 	#print vault_server_endpoint
    	vault = Vault(args)
    	print vault.vault_auth()
+   	#vault.vault_auth()
