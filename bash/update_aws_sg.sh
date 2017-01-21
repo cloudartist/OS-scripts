@@ -28,23 +28,22 @@ function modify_sg()
 	# If is empty or contains only spaces
 	if [[ -z "${vpn_cidrs// }" ]]
 	then
-		echo "No rules to delete"
-		exit 1
+		echo "No rules to delete... proceeding to add one"
+	else
+		# Remove rules before adding the corret ones
+		vpn_cidrs_array=($vpn_cidrs)
+		for cidr in "${vpn_cidrs_array[@]}"
+		do
+			:
+			echo "Removing rule for $cidr"
+			aws ec2 revoke-security-group-ingress --group-id sg-f7ab3691 --ip-permissions '[{"IpProtocol": "tcp", "FromPort": 1194, "ToPort": 1194, "IpRanges": [{"CidrIp": "'"${cidr}"'"}]}]' --region eu-west-1
+		done
 	fi
 
-	# Remove rules before adding the corret ones
-	vpn_cidrs_array=($vpn_cidrs)
-	for cidr in "${vpn_cidrs_array[@]}"
-	do
-		:
-		echo "Removing rule for $cidr"
-		aws ec2 revoke-security-group-ingress --group-id sg-f7ab3691 --ip-permissions '[{"IpProtocol": "tcp", "FromPort": 1194, "ToPort": 1194, "IpRanges": [{"CidrIp": "'"${cidr}"'"}]}]' --region eu-west-1
-	done
-
 	# Add rule with correct IP
+	isp_ip=$(curl -s http://api.ipify.org)"/32"
 
-	
-
+	aws ec2 authorize-security-group-ingress --group-id sg-f7ab3691 --protocol tcp --port 1194 --cidr $isp_ip --region eu-west-1
 }
 
 function main()
@@ -55,6 +54,7 @@ function main()
 
 main
 
-#aws ec2 authorize-security-group-ingress --group-id sg-f7ab3691 --protocol tcp --port 1194 --cidr 203.0.113.0/24 --region eu-west-1
+
+
 
 
