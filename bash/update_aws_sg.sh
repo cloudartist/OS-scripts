@@ -18,6 +18,16 @@ set -o pipefail
 set -o nounset 
 set -o xtrace 
 
+# Global variables
+
+isp_ip=$(curl -s http://api.ipify.org)"/32"
+
+function check_compare_ip()
+{
+	# Check if rules already exist
+	exit 0
+}
+
 function modify_sg()
 {
 	# Check if any rules for $port exists
@@ -41,8 +51,6 @@ function modify_sg()
 	fi
 
 	# Add rule with correct IP
-	isp_ip=$(curl -s http://api.ipify.org)"/32"
-
 	aws ec2 authorize-security-group-ingress --group-id sg-f7ab3691 --protocol tcp --port 1194 --cidr $isp_ip --region eu-west-1
 }
 
