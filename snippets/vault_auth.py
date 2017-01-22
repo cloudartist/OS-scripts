@@ -19,7 +19,7 @@ class Vault(object):
 		self.secret_path = args.secret_path
 		self.role_id = args.role_id
 		self.secret_id = args.secret_id
-
+	"""Get vault token to authenticate"""
 	def vault_auth(self):
 
 		data = ('{"role_id": "%s" ,"secret_id":"%s"}' % (self.role_id, self.secret_id))
@@ -35,7 +35,13 @@ class Vault(object):
 
 		except requests.exceptions.RequestException as e:
 			return "Error: {}".format(e)        
+	"""Get vault vault secret using token"""
+	def vault_get_secret(self):
 
+		vault_token = self.vault_auth()
+		vault_secret_data = requests.get("http://" + self.vault_server_endpoint + "/v1/" + self.secret_path, headers={"X-Vault-Token":vault_token})
+		vault_secret = json.loads(vault_secret_data.text)
+		return vault_secret['data']['value']
 
 def args_check():
 	return 0
@@ -43,4 +49,4 @@ def args_check():
 if __name__ == '__main__':
 
    	vault = Vault(args)
-   	print vault.vault_auth()
+   	print vault.vault_get_secret()
