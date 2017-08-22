@@ -59,10 +59,10 @@ vault_server_endpoint=${s}
 secret_path=${p}
 role_id=${r}
 secret_id=${S}
-#vault_server_endpoint="7.7.7.73:8200"
+#vault_server_endpoint="<ip>:<port>"
 #secret_path="secret/github/access_token"
-#role_id=${r}="7f538aca-bcdc-f6e1-fec8-2b6d8689a480"
-#secret_id="d3d156fc-2a0e-07dd-0aea-3e5b20705abd"
+#role_id=${r}="<id>"
+#secret_id="<id>"
 
 
 vault_token=$(curl -s -X POST \
