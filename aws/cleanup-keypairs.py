@@ -9,5 +9,5 @@ connection = boto.ec2.connect_to_region(region)
 keypairs = connection.get_all_key_pairs()
 
 for k in keypairs:
-  if not k.name.startswith('qwik'):
+  if not k.name.startswith('prod'):
     print "Deleting key pair", k.name
